@@ -8,20 +8,38 @@ function App() {
   const [rowClues, setRowClues] = useState(Array(gridSize).fill('0'))
   const [colClues, setColClues] = useState(Array(gridSize).fill('0'))
   const [isWon, setIsWon] = useState(false)
+  const [attempts, setAttempts] = useState(3)
+  const [completedRows, setCompletedRows] = useState(Array(gridSize).fill(false))
+  const [completedCols, setCompletedCols] = useState(Array(gridSize).fill(false))
 
   useEffect(() => {
     generateGrid()
   }, [gridSize])
 
-  // check win condition
+  useEffect(() => {
+    checkWin(displayGrid)
+  }, [gameGrid])
+
+  // check win condition and completed rows/columns
   const checkWin = (newDisplayGrid) => {
+    let allCorrect = true
+    const newCompletedRows = Array(gridSize).fill(true)
+    const newCompletedCols = Array(gridSize).fill(true)
+
     for (let i = 0; i < gridSize; i++) {
       for (let j = 0; j < gridSize; j++) {
-        const isCorrect = (newDisplayGrid[i][j] && !gameGrid[i][j]) || (!newDisplayGrid[i][j] && gameGrid[i][j])
-        if (!isCorrect) return false
+        const isCorrect = (newDisplayGrid[i][j] === !gameGrid[i][j])
+        if (!isCorrect) {
+          allCorrect = false
+          newCompletedRows[i] = false
+          newCompletedCols[j] = false
+        }
       }
     }
-    return true
+
+    setCompletedRows(newCompletedRows)
+    setCompletedCols(newCompletedCols)
+    return allCorrect
   }
 
   // generate the game grid and calculate hints
@@ -29,7 +47,7 @@ function App() {
     const newGameGrid = Array(gridSize).fill().map(() => Array(gridSize).fill(false)) 
     for(let i = 0; i < gridSize; i++){
       for(let j = 0; j < gridSize; j++){
-        newGameGrid[i][j] = Math.random() < 0.60
+        newGameGrid[i][j] = Math.random() < 0.63
       }
     }
     setGameGrid(newGameGrid)
@@ -80,11 +98,24 @@ function App() {
 
   // toggle the cell in display grid and check if it matches game grid
   const toggleCell = (row, col) => {
-    if (isWon) return
+    if (isWon || attempts <= 0) return
     
     const newDisplayGrid = [...displayGrid]
     newDisplayGrid[row][col] = !newDisplayGrid[row][col]
     setDisplayGrid(newDisplayGrid)
+
+    // check if the move was wrong
+    const isWrong = (newDisplayGrid[row][col] && gameGrid[row][col])
+    if (isWrong) {
+      setAttempts(prev => prev - 1)
+
+      if(attempts <= 1){
+        console.log('game over')
+        // set display grid to game grid
+        let inverseGameGrid = gameGrid.map(row => row.map(cell => !cell))
+        setDisplayGrid(inverseGameGrid)
+      }
+    }
 
     if (checkWin(newDisplayGrid)) {
       setIsWon(true)
@@ -100,7 +131,12 @@ function App() {
     setRowClues(Array(size).fill('0'))
     setColClues(Array(size).fill('0'))
     setIsWon(false)
+    setAttempts(3)
+    setCompletedRows(Array(size).fill(false))
+    setCompletedCols(Array(size).fill(false))
+    
     if (!isNew) generateGrid()
+    
   }
 
   // get cell class based on game state
@@ -121,6 +157,16 @@ function App() {
       <div className="bg-gray-800 p-8 rounded-lg shadow-xl">
         <h1 className="text-2xl font-bold text-center mb-6 text-white">Grid Game</h1>
         
+        <div className="text-center text-yellow-500 font-bold mb-4">
+          Attempts remaining: {attempts}
+        </div>
+
+        {attempts <= 0 && !isWon && (
+          <div className="text-center text-red-500 font-bold mb-4">
+            Game Over!.
+          </div>
+        )}
+
         {isWon && (
           <div className="text-center text-green-500 font-bold mb-4">
             Congratulations! You won!
@@ -152,7 +198,11 @@ function App() {
               {colClues.map((clue, i) => (
                 <div 
                   key={`col-${i}`} 
-                  className="w-14 h-14 flex items-center justify-center bg-gray-900 rounded text-sm"
+                  className={`w-14 h-14 flex items-center justify-center rounded text-sm ${
+                    completedCols[i] 
+                      ? 'bg-gray-700 text-gray-500' 
+                      : 'bg-gray-900'
+                  }`}
                 >
                   {clue}
                 </div>
@@ -166,7 +216,11 @@ function App() {
               {rowClues.map((clue, rowIndex) => (
                 <div 
                   key={`row-clue-${rowIndex}`}
-                  className="w-14 h-14 flex items-center justify-center bg-gray-900 rounded text-sm"
+                  className={`w-14 h-14 flex items-center justify-center rounded text-sm ${
+                    completedRows[rowIndex] 
+                      ? 'bg-gray-700 text-gray-500' 
+                      : 'bg-gray-900'
+                  }`}
                 >
                   {clue}
                 </div>
