@@ -93,22 +93,21 @@ function App() {
 
   // update the grid size
   const updateGridSize = (size) => {
+    let isNew = size !== gridSize
     setGridSize(size)
     setGameGrid(Array(size).fill().map(() => Array(size).fill(false)))
     setDisplayGrid(Array(size).fill().map(() => Array(size).fill(false)))
     setRowClues(Array(size).fill('0'))
     setColClues(Array(size).fill('0'))
     setIsWon(false)
+    if (!isNew) generateGrid()
   }
 
   // get cell class based on game state
   const getCellClass = (row, col) => {
     const isClicked = displayGrid[row][col]
     const shouldBeClicked = !gameGrid[row][col]
-    
-    if (isWon) {
-      return 'bg-green-500' // win
-    }
+
     
     if (isClicked) {
       return shouldBeClicked ? 'bg-indigo-500' : 'bg-red-500' // right or wrong
