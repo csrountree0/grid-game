@@ -1,31 +1,132 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import './App.css'
 
 function App() {
   const [gridSize, setGridSize] = useState(7)
-  const [grid, setGrid] = useState(Array(gridSize).fill().map(() => Array(gridSize).fill(false)))
-  const [rowClues, setRowClues] = useState(Array(gridSize).fill().map(() => [0, 0]))
-  const [colClues, setColClues] = useState(Array(gridSize).fill().map(() => [0, 0]))
+  const [gameGrid, setGameGrid] = useState(Array(gridSize).fill().map(() => Array(gridSize).fill(false)))
+  const [displayGrid, setDisplayGrid] = useState(Array(gridSize).fill().map(() => Array(gridSize).fill(false)))
+  const [rowClues, setRowClues] = useState(Array(gridSize).fill('0'))
+  const [colClues, setColClues] = useState(Array(gridSize).fill('0'))
+  const [isWon, setIsWon] = useState(false)
 
-  // toggle the cell
+  useEffect(() => {
+    generateGrid()
+  }, [gridSize])
+
+  // check win condition
+  const checkWin = (newDisplayGrid) => {
+    for (let i = 0; i < gridSize; i++) {
+      for (let j = 0; j < gridSize; j++) {
+        const isCorrect = (newDisplayGrid[i][j] && !gameGrid[i][j]) || (!newDisplayGrid[i][j] && gameGrid[i][j])
+        if (!isCorrect) return false
+      }
+    }
+    return true
+  }
+
+  // generate the game grid and calculate hints
+  const generateGrid = () => {
+    const newGameGrid = Array(gridSize).fill().map(() => Array(gridSize).fill(false)) 
+    for(let i = 0; i < gridSize; i++){
+      for(let j = 0; j < gridSize; j++){
+        newGameGrid[i][j] = Math.random() < 0.60
+      }
+    }
+    setGameGrid(newGameGrid)
+    
+    // reset display grid and win state
+    setDisplayGrid(Array(gridSize).fill().map(() => Array(gridSize).fill(false)))
+    setIsWon(false)
+
+    // calculate clues based on cells to click (false cells)
+    const newRowClues = Array(gridSize).fill('')
+    const newColClues = Array(gridSize).fill('')
+
+    // check rows for cells to click (false cells)
+    for(let i = 0; i < gridSize; i++){
+      let count = 0
+      let rowClue = []
+      for(let j = 0; j < gridSize; j++){
+        if(!newGameGrid[i][j]){
+          count++
+        } else if(count > 0) {
+          rowClue.push(count)
+          count = 0
+        }
+      }
+      if(count > 0) rowClue.push(count)
+      newRowClues[i] = rowClue.join(' ') || '0'
+    }
+
+    // check columns for cells to click (false cells)
+    for(let j = 0; j < gridSize; j++){
+      let count = 0
+      let colClue = []
+      for(let i = 0; i < gridSize; i++){
+        if(!newGameGrid[i][j]){
+          count++
+        } else if(count > 0) {
+          colClue.push(count)
+          count = 0
+        }
+      }
+      if(count > 0) colClue.push(count)
+      newColClues[j] = colClue.join(' ') || '0'
+    }
+
+    setRowClues(newRowClues)
+    setColClues(newColClues)
+  }
+
+  // toggle the cell in display grid and check if it matches game grid
   const toggleCell = (row, col) => {
-    const newGrid = [...grid]
-    newGrid[row][col] = !newGrid[row][col]
-    setGrid(newGrid)
+    if (isWon) return
+    
+    const newDisplayGrid = [...displayGrid]
+    newDisplayGrid[row][col] = !newDisplayGrid[row][col]
+    setDisplayGrid(newDisplayGrid)
+
+    if (checkWin(newDisplayGrid)) {
+      setIsWon(true)
+    }
   }
 
   // update the grid size
   const updateGridSize = (size) => {
     setGridSize(size)
-    setGrid(Array(size).fill().map(() => Array(size).fill(false)))
-    setRowClues(Array(size).fill().map(() => [0, 0]))
-    setColClues(Array(size).fill().map(() => [0, 0]))
+    setGameGrid(Array(size).fill().map(() => Array(size).fill(false)))
+    setDisplayGrid(Array(size).fill().map(() => Array(size).fill(false)))
+    setRowClues(Array(size).fill('0'))
+    setColClues(Array(size).fill('0'))
+    setIsWon(false)
+  }
+
+  // get cell class based on game state
+  const getCellClass = (row, col) => {
+    const isClicked = displayGrid[row][col]
+    const shouldBeClicked = !gameGrid[row][col]
+    
+    if (isWon) {
+      return 'bg-green-500' // win
+    }
+    
+    if (isClicked) {
+      return shouldBeClicked ? 'bg-indigo-500' : 'bg-red-500' // right or wrong
+    }
+    
+    return 'bg-gray-700 hover:bg-gray-600' // base
   }
 
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100 flex items-center justify-center">
       <div className="bg-gray-800 p-8 rounded-lg shadow-xl">
         <h1 className="text-2xl font-bold text-center mb-6 text-white">Grid Game</h1>
+        
+        {isWon && (
+          <div className="text-center text-green-500 font-bold mb-4">
+            Congratulations! You won!
+          </div>
+        )}
         
         {/* Grid size buttons */}
         <div className="flex justify-center gap-4 mb-6">
@@ -47,14 +148,14 @@ function App() {
         <div className="flex flex-col">
           {/* Top row with column clues */}
           <div className="flex">
-            <div className="w-12 h-12" /> 
+            <div className="w-14 h-14" /> 
             <div className="flex gap-2 mb-2 ml-2">
               {colClues.map((clue, i) => (
                 <div 
                   key={`col-${i}`} 
-                  className="w-12 h-12 flex items-center justify-center bg-gray-900 rounded text-sm"
+                  className="w-14 h-14 flex items-center justify-center bg-gray-900 rounded text-sm"
                 >
-                  {clue.join('\n')}
+                  {clue}
                 </div>
               ))}
             </div>
@@ -66,9 +167,9 @@ function App() {
               {rowClues.map((clue, rowIndex) => (
                 <div 
                   key={`row-clue-${rowIndex}`}
-                  className="w-12 h-12 flex items-center justify-center bg-gray-900 rounded text-sm"
+                  className="w-14 h-14 flex items-center justify-center bg-gray-900 rounded text-sm"
                 >
-                  {clue.join('\n')}
+                  {clue}
                 </div>
               ))}
             </div>
@@ -81,12 +182,11 @@ function App() {
                 gridTemplateRows: `repeat(${gridSize}, minmax(0, 1fr))`
               }}
             >
-              {grid.map((row, rowIndex) => (
+              {displayGrid.map((row, rowIndex) => (
                 row.map((cell, colIndex) => (
                   <div
                     key={`cell-${rowIndex}-${colIndex}`}
-                    className={`w-12 h-12 rounded cursor-pointer transition-all duration-200
-                      ${cell ? 'bg-indigo-500' : 'bg-gray-700 hover:bg-gray-600'}`}
+                    className={`w-14 h-14 rounded cursor-pointer transition-all duration-200 ${getCellClass(rowIndex, colIndex)}`}
                     onClick={() => toggleCell(rowIndex, colIndex)}
                   />
                 ))
